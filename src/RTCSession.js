@@ -426,6 +426,7 @@ RTCSession.prototype.answer = function(options) {
     userMediaSucceeded(mediaStream);
   } else {
     this.rtcMediaHandler.getUserMedia(
+      this.ua,
       userMediaSucceeded,
       userMediaFailed,
       mediaConstraints
@@ -1331,6 +1332,7 @@ RTCSession.prototype.sendInitialRequest = function(mediaConstraints, RTCOfferCon
    userMediaSucceeded(mediaStream);
  } else {
    this.rtcMediaHandler.getUserMedia(
+     this.ua,
      userMediaSucceeded,
      userMediaFailed,
      mediaConstraints

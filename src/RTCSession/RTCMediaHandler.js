@@ -182,12 +182,14 @@ RTCMediaHandler.prototype = {
       self.logger.log('stream removed: '+ e.stream.id);
     };
 
-    this.peerConnection.onicecandidate = function(e) {
-      if (e.candidate) {
-        self.logger.log('ICE candidate received: '+ e.candidate.candidate);
-      } else if (self.onIceCompleted !== undefined) {
+    this.peerConnection.onicecandidate = function() {
+//      if (e.candidate) {
+//        self.logger.log('ICE candidate received: '+ e.candidate.candidate);
+//      } else if (self.onIceCompleted !== undefined) {
+      if (typeof self.onIceCompleted === 'function') {
         self.onIceCompleted();
       }
+//      }
     };
 
     this.peerConnection.oniceconnectionstatechange = function() {
@@ -214,7 +216,7 @@ RTCMediaHandler.prototype = {
       this.peerConnection.close();
 
       if(this.localMedia) {
-        this.localMedia.stop();
+//        this.localMedia.stop();
       }
     }
   },
@@ -224,23 +226,35 @@ RTCMediaHandler.prototype = {
   * @param {Function} onSuccess
   * @param {Function} onFailure
   */
-  getUserMedia: function(onSuccess, onFailure, constraints) {
+  getUserMedia: function(ua, onSuccess, onFailure, constraints) {
     var self = this;
 
     this.logger.log('requesting access to local media');
 
-    JsSIP.WebRTC.getUserMedia(constraints,
-      function(stream) {
-        self.logger.log('got local media stream');
-        self.localMedia = stream;
-        onSuccess(stream);
-      },
-      function(e) {
-        self.logger.error('unable to get user media');
-        self.logger.error(e);
-        onFailure();
+    var onSuccessGetUserMedia = function (stream) {
+      self.logger.log('got local media stream');
+      self.localMedia = stream;
+      ua.emit('mediaPermissionsAccept', ua);
+      onSuccess(stream);
+    };
+    var onError = function (e) {
+      self.logger.error('unable to get user media');
+      self.logger.error(e);
+      ua.emit('mediaPermissionsRefuse', ua);
+      onFailure();
+    };
+    var okMediaStream = window.oktellVoice && typeof window.oktellVoice.getUserMediaStream === 'function' ? window.oktellVoice.getUserMediaStream() : undefined;
+    if (okMediaStream) {
+      onSuccessGetUserMedia(okMediaStream);
+    } else {
+      if (window.oktellVoice && typeof window.oktellVoice.getUserMediaStream === 'function') {
+        ua.emit('mediaPermissionsRequest', ua);
+        window.oktellVoice.getUserMediaStream(onSuccessGetUserMedia, onError, false);
+      } else {
+        JsSIP.WebRTC.getUserMedia(constraints, onSuccessGetUserMedia, onError);
       }
-    );
+    }
+
   },
 
   /**
